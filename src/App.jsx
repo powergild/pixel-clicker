@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 const RealtimePixelClicker = () => {
   const [pixels, setPixels] = useState([]);
   const [userName, setUserName] = useState('');
-  const [isJoined, setIsJoined] = useState(false);
+  const [isJoined, setIsJoined] = useState(true); // 처음 접속 시 바로 서비스 진입
   const [activityFeed, setActivityFeed] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [showAllUsers, setShowAllUsers] = useState(false);
@@ -12,6 +12,8 @@ const RealtimePixelClicker = () => {
   const [adAnimation, setAdAnimation] = useState(false);
   const [location, setLocation] = useState('서울');
   const [district, setDistrict] = useState('강남구');
+  const [totalClicks, setTotalClicks] = useState(0); // 전체 클릭 카운터
+  const [showLoginModal, setShowLoginModal] = useState(false); // 로그인 모달 표시 여부
 
   const colors = [
     '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
@@ -128,6 +130,18 @@ const RealtimePixelClicker = () => {
 
     const clickedPixel = pixels.find(p => p.id === id);
     
+    // 전체 클릭 카운터 증가
+    setTotalClicks(prev => {
+      const newTotalClicks = prev + 1;
+      
+      // 100번 클릭 후 로그인 모달 표시
+      if (newTotalClicks === 100 && !showLoginModal) {
+        setShowLoginModal(true);
+      }
+      
+      return newTotalClicks;
+    });
+    
     // 광고 픽셀인 경우
     if (clickedPixel.isAd) {
       handleAdClick();
@@ -142,13 +156,13 @@ const RealtimePixelClicker = () => {
           ...pixel,
           clicks: newClicks,
           color: colors[colorIndex],
-          lastUser: userName
+          lastUser: userName || '게스트'
         };
       }
       return pixel;
     }));
 
-    addActivity(userName, id, 'self');
+    addActivity(userName || '게스트', id, 'self');
   };
 
   const handleAdClick = () => {
@@ -158,81 +172,47 @@ const RealtimePixelClicker = () => {
     setAdAnimation(true);
     setTimeout(() => setAdAnimation(false), 300);
     
-    addActivity(userName, null, 'ad');
+    addActivity(userName || '게스트', null, 'ad');
   };
 
   const handleJoin = () => {
     if (userName.trim()) {
       setIsJoined(true);
+      setShowLoginModal(false);
       addActivity(userName, null, 'join');
     }
   };
 
-  if (!isJoined) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-8">
-        <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700 max-w-md w-full">
-          <h1 className="text-3xl font-bold text-white mb-2 text-center">퇴 사 버 튼</h1>
-          <p className="text-gray-400 text-center mb-6">클릭해보자</p>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-gray-300 mb-2 text-sm">닉네임</label>
-              <input
-                type="text"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleJoin()}
-                placeholder="닉네임을 입력하세요"
-                className="w-full bg-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                maxLength={10}
-              />
-            </div>
+  const handleCloseLoginModal = () => {
+    setShowLoginModal(false);
+  };
 
-            <div>
-              <label className="block text-gray-300 mb-2 text-sm">지역</label>
-              <div className="grid grid-cols-2 gap-2">
-                <select
-                  value={location}
-                  onChange={(e) => {
-                    setLocation(e.target.value);
-                    setDistrict(locationData[e.target.value][0]);
-                  }}
-                  className="bg-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                >
-                  {Object.keys(locationData).map(city => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
-                </select>
-                <select
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  className="bg-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                >
-                  {locationData[location].map(dist => (
-                    <option key={dist} value={dist}>{dist}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <button
-              onClick={handleJoin}
-              disabled={!userName.trim()}
-              className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
-            >
-              참여하기
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-4">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:h-[calc(100vh-2rem)]">
+        {/* 상단 클릭 카운터 */}
+        <div className="bg-gray-800 rounded-xl shadow-xl p-4 border border-gray-700 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold text-white">픽셀 클리커</h1>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400">총 클릭:</span>
+                <span className="text-cyan-400 font-bold text-xl">{totalClicks}</span>
+                <span className="text-gray-400">번</span>
+              </div>
+            </div>
+            {userName && (
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400">안녕하세요,</span>
+                <span className="text-white font-semibold">{userName}</span>
+                <span className="text-gray-400">님!</span>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:h-[calc(100vh-8rem)]">
           {/* 왼쪽: 온라인 사용자 */}
           <div className="bg-gray-800 rounded-xl shadow-xl p-4 border border-gray-700 lg:overflow-y-auto">
             <h2 className="text-xl font-bold text-white mb-4 flex items-center sticky top-0 bg-gray-800 pb-2">
@@ -414,6 +394,92 @@ const RealtimePixelClicker = () => {
           </div>
         </div>
       </div>
+
+      {/* 로그인 모달 */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700 max-w-md w-full">
+            <div className="text-center mb-6">
+              <h1 className="text-3xl font-bold text-white mb-2">로그인</h1>
+              <p className="text-gray-400">클릭 {totalClicks}번 달성! 🎉</p>
+            </div>
+            
+            {/* 키보드 캡 */}
+            <div className="flex justify-center gap-4 mb-6">
+              <button
+                onClick={() => setUserName(prev => prev + '퇴')}
+                className="w-16 h-16 bg-gray-700 hover:bg-gray-600 text-white font-bold text-xl rounded-lg transition-colors duration-200 border border-gray-600 hover:border-gray-500"
+              >
+                퇴
+              </button>
+              <button
+                onClick={() => setUserName(prev => prev + '사')}
+                className="w-16 h-16 bg-gray-700 hover:bg-gray-600 text-white font-bold text-xl rounded-lg transition-colors duration-200 border border-gray-600 hover:border-gray-500"
+              >
+                사
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-300 mb-2 text-sm">닉네임</label>
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleJoin()}
+                  placeholder="닉네임을 입력하세요"
+                  className="w-full bg-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  maxLength={10}
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-300 mb-2 text-sm">지역</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={location}
+                    onChange={(e) => {
+                      setLocation(e.target.value);
+                      setDistrict(locationData[e.target.value][0]);
+                    }}
+                    className="bg-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  >
+                    {Object.keys(locationData).map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    className="bg-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  >
+                    {locationData[location].map(dist => (
+                      <option key={dist} value={dist}>{dist}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={handleJoin}
+                  disabled={!userName.trim()}
+                  className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+                >
+                  로그인
+                </button>
+                <button
+                  onClick={handleCloseLoginModal}
+                  className="px-4 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 rounded-lg transition-colors duration-200"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
